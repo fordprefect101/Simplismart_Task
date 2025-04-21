@@ -34,7 +34,6 @@ class UserViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-        """Create a new user"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -48,12 +47,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def create_with_organization(self, request):
-        """Create user and organization in one step"""
         user_serializer = self.get_serializer(data=request.data)
         if user_serializer.is_valid():
             user = user_serializer.save()
             
-            # Create organization if provided
             org_data = request.data.get('organization')
             if org_data:
                 org_serializer = OrganizationCreateSerializer(data=org_data)
@@ -100,7 +97,6 @@ class ClusterViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def resources(self, request, pk=None):
-        """Get detailed resource information for a cluster"""
         cluster = self.get_object()
         return Response({
             'total_cpu': cluster.total_cpu,
@@ -117,7 +113,6 @@ class ClusterViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def use_resources(self, request, pk=None):
-        """Use resources in a cluster"""
         cluster = self.get_object()
         serializer = ResourceUsageCreateSerializer(data=request.data)
         
@@ -144,7 +139,6 @@ class ResourceUsageViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(cluster__owner=self.request.user)
 
 class DeploymentViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing deployments"""
     permission_classes = [IsAuthenticated]
     queryset = Deployment.objects.all()
 
@@ -154,14 +148,11 @@ class DeploymentViewSet(viewsets.ModelViewSet):
         return DeploymentSerializer
 
     def get_queryset(self):
-        """Filter deployments to show only those in user's clusters"""
         return self.queryset.filter(cluster__owner=self.request.user)
 
     def perform_create(self, serializer):
-        """Create deployment and update cluster resources"""
         deployment = serializer.save()
         
-        # Create a resource usage record for the deployment
         ResourceUsage.objects.create(
             cluster=deployment.cluster,
             used_cpu=deployment.required_cpu,
@@ -169,21 +160,17 @@ class DeploymentViewSet(viewsets.ModelViewSet):
             used_gpu=deployment.required_gpu
         )
         
-        # Publish deployment data to RabbitMQ
         deployment_data = DeploymentSerializer(deployment).data
         rabbitmq_publisher.publish_deployment(deployment_data)
 
     def perform_update(self, serializer):
-        """Update deployment and handle resource changes"""
         old_deployment = self.get_object()
         new_deployment = serializer.save()
         
-        # Update resource usage if requirements changed
         if (old_deployment.required_cpu != new_deployment.required_cpu or
             old_deployment.required_ram != new_deployment.required_ram or
             old_deployment.required_gpu != new_deployment.required_gpu):
             
-            # Update the resource usage record
             resource_usage = ResourceUsage.objects.get(
                 cluster=new_deployment.cluster,
                 used_cpu=old_deployment.required_cpu,
@@ -195,12 +182,10 @@ class DeploymentViewSet(viewsets.ModelViewSet):
             resource_usage.used_gpu = new_deployment.required_gpu
             resource_usage.save()
         
-        # Publish updated deployment data to RabbitMQ
         deployment_data = DeploymentSerializer(new_deployment).data
         rabbitmq_publisher.publish_deployment(deployment_data)
 
 class OrganizationViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing organizations"""
     permission_classes = [IsAuthenticated]
     queryset = Organization.objects.all()
 
@@ -210,11 +195,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return OrganizationSerializer
 
     def get_queryset(self):
-        """Filter organizations to show only those the user is a member of"""
         return self.queryset.filter(members=self.request.user)
 
     def perform_create(self, serializer):
-        """Create organization and add creator as admin"""
         organization = serializer.save(created_by=self.request.user)
         OrganizationMembership.objects.create(
             user=self.request.user,
@@ -223,23 +206,19 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         )
 
     def create(self, request, *args, **kwargs):
-        """Override create to return proper response format"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         
-        # Get the created organization with all fields
         organization = serializer.instance
         response_serializer = OrganizationSerializer(organization)
         
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 class GenerateInviteCodeView(APIView):
-    """View for generating organization invite codes"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, organization_id):
-        """Generate invite code for an organization"""
         try:
             organization = Organization.objects.get(id=organization_id)
             if not request.user.is_member_of(organization):
@@ -261,12 +240,10 @@ class GenerateInviteCodeView(APIView):
             )
 
 class JoinOrganizationView(APIView):
-    """View for joining organizations using invite codes"""
     permission_classes = [IsAuthenticated]
-    http_method_names = ['post']  # Explicitly allow POST method
+    http_method_names = ['post']
 
     def post(self, request, *args, **kwargs):
-        """Join organization using invite code"""
         serializer = OrganizationInviteSerializer(data=request.data)
         if serializer.is_valid():
             try:

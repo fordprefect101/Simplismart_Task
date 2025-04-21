@@ -13,7 +13,6 @@ class RabbitMQPublisher:
         self.setup_connection()
 
     def setup_connection(self):
-        """Setup or reset RabbitMQ connection"""
         try:
             if self.connection and self.connection.is_open:
                 self.connection.close()
@@ -33,24 +32,21 @@ class RabbitMQPublisher:
             )
             self.channel = self.connection.channel()
             
-            # Declare exchange
             self.channel.exchange_declare(
                 exchange='deployments',
                 exchange_type='direct',
                 durable=True
             )
             
-            # Declare queue with matching arguments
             self.channel.queue_declare(
                 queue='deployments',
                 durable=True,
                 arguments={
-                    'x-message-ttl': 60000,  # Message TTL of 1 minute
-                    'x-dead-letter-exchange': 'deployments.dlx'  # Dead letter exchange
+                    'x-message-ttl': 60000,
+                    'x-dead-letter-exchange': 'deployments.dlx'
                 }
             )
             
-            # Bind queue to exchange
             self.channel.queue_bind(
                 exchange='deployments',
                 queue='deployments',
@@ -64,16 +60,14 @@ class RabbitMQPublisher:
             return False
 
     def ensure_connection(self):
-        """Ensure we have a valid connection"""
         if not self.connection or not self.connection.is_open:
             logger.warning("RabbitMQ connection lost. Attempting to reconnect...")
             return self.setup_connection()
         return True
 
     def publish_deployment(self, deployment_data):
-        """Publish deployment data to RabbitMQ queue"""
         max_retries = 3
-        retry_delay = 2  # seconds
+        retry_delay = 2
         
         for attempt in range(max_retries):
             try:
@@ -88,7 +82,7 @@ class RabbitMQPublisher:
                     routing_key='deployment',
                     body=json.dumps(deployment_data),
                     properties=pika.BasicProperties(
-                        delivery_mode=2,  # make message persistent
+                        delivery_mode=2,
                     )
                 )
                 logger.info(f"Successfully published deployment: {deployment_data.get('id')}")
@@ -110,7 +104,6 @@ class RabbitMQPublisher:
                 return False
 
     def close(self):
-        """Close the RabbitMQ connection"""
         try:
             if self.connection and self.connection.is_open:
                 self.connection.close()
@@ -118,5 +111,4 @@ class RabbitMQPublisher:
         except Exception as e:
             logger.error(f"Error closing RabbitMQ connection: {str(e)}")
 
-# Create a singleton instance
 rabbitmq_publisher = RabbitMQPublisher() 

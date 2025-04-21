@@ -16,8 +16,8 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"  # AMQP protocol port
-      - "15672:15672"  # Management UI port
+      - "5672:5672"  
+      - "15672:15672" 
     networks:
       - deployment-network
 

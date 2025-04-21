@@ -88,7 +88,6 @@ class TestRabbitMQPublisher(TestCase):
         
         publisher = RabbitMQPublisher()
         
-        # Verify connection setup
         mock_connection.assert_called_once()
         mock_channel.exchange_declare.assert_called_once()
         mock_channel.queue_declare.assert_called_once()
@@ -161,7 +160,6 @@ class TestAPIEndpoints(TestCase):
         print(f"Response content: {response.content}")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         
-        # Verify resource usage was created
         self.assertEqual(ResourceUsage.objects.count(), 1)
         resource_usage = ResourceUsage.objects.first()
         self.assertEqual(resource_usage.used_cpu, 2)

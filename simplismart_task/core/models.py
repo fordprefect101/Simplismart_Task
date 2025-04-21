@@ -16,7 +16,7 @@ class User(AbstractUser):
         return self.email
 
     def create_organization(self, name, description=""):
-        """Create a new organization and add user as admin"""
+       
         organization = Organization.objects.create(
             name=name,
             description=description,
@@ -29,11 +29,8 @@ class User(AbstractUser):
         )
         return organization
 
-    def join_organization(self, invite_code):
-        """Join an organization using invite code"""
+    def join_organization(self, invite_code):  
         try:
-            # Decode and verify the invite code
-            from rest_framework_simplejwt.tokens import RefreshToken
             token = RefreshToken(invite_code)
             payload = token.payload
             
@@ -43,7 +40,6 @@ class User(AbstractUser):
             
             organization = Organization.objects.get(id=organization_id)
             
-            # Check if user is already a member
             if self.is_member_of(organization):
                 raise ValueError("You are already a member of this organization")
             
@@ -57,7 +53,6 @@ class User(AbstractUser):
             raise ValueError(f"Invalid invite code: {str(e)}")
 
     def generate_invite_code(self, organization):
-        """Generate invite code for an organization"""
         if not self.is_member_of(organization):
             raise ValueError("User is not a member of this organization")
         
@@ -67,14 +62,12 @@ class User(AbstractUser):
         return str(token)
 
     def is_member_of(self, organization):
-        """Check if user is a member of an organization"""
         return OrganizationMembership.objects.filter(
             user=self,
             organization=organization
         ).exists()
 
     def is_admin_of(self, organization):
-        """Check if user is an admin of an organization"""
         return OrganizationMembership.objects.filter(
             user=self,
             organization=organization,
@@ -86,7 +79,6 @@ class Cluster(models.Model):
     description = models.TextField(blank=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='clusters')
     
-    # Total resources available in the cluster
     total_cpu = models.IntegerField(
         default=0,
         validators=[MinValueValidator(0)],
@@ -103,7 +95,6 @@ class Cluster(models.Model):
         help_text="Total GPU units available in the cluster"
     )
     
-    # Available resources (calculated property)
     @property
     def available_cpu(self):
         used = sum(res.used_cpu for res in self.resource_usage.all())
@@ -131,7 +122,6 @@ class Cluster(models.Model):
 class ResourceUsage(models.Model):
     cluster = models.ForeignKey(Cluster, on_delete=models.CASCADE, related_name='resource_usage')
     
-    # Used resources
     used_cpu = models.IntegerField(
         default=0,
         validators=[MinValueValidator(0)],
@@ -158,7 +148,6 @@ class ResourceUsage(models.Model):
         ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
-        # Validate that usage doesn't exceed available resources
         if self.used_cpu > self.cluster.available_cpu:
             raise ValueError(f"Cannot use {self.used_cpu} CPU cores. Only {self.cluster.available_cpu} available.")
         if self.used_ram > self.cluster.available_ram:
@@ -168,7 +157,6 @@ class ResourceUsage(models.Model):
         super().save(*args, **kwargs)
 
 class Deployment(models.Model):
-    """Model for managing deployments in clusters"""
     name = models.CharField(max_length=255)
     cluster = models.ForeignKey(Cluster, on_delete=models.CASCADE, related_name='deployments')
     docker_image = models.CharField(max_length=255)
@@ -195,11 +183,9 @@ class Deployment(models.Model):
         return f"{self.name} ({self.cluster.name})"
 
     def save(self, *args, **kwargs):
-        """Override save to validate resource requirements"""
         if self.required_cpu < 0 or self.required_ram < 0 or self.required_gpu < 0:
             raise ValueError("Resource requirements cannot be negative")
         
-        # Check if cluster has enough resources
         if (self.required_cpu > self.cluster.available_cpu or
             self.required_ram > self.cluster.available_ram or
             self.required_gpu > self.cluster.available_gpu):
@@ -208,7 +194,6 @@ class Deployment(models.Model):
         super().save(*args, **kwargs)
 
 class Organization(models.Model):
-    """Model for organizations"""
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_organizations')
@@ -223,7 +208,6 @@ class Organization(models.Model):
         ordering = ['-created_at']
 
 class OrganizationMembership(models.Model):
-    """Model for tracking organization membership"""
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     role = models.CharField(

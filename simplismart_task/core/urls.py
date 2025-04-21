@@ -19,7 +19,6 @@ router.register(r'resource-usage', ResourceUsageViewSet)
 router.register(r'deployments', DeploymentViewSet)
 router.register(r'organizations', OrganizationViewSet)
 
-# Custom URL patterns that don't fit the ViewSet pattern
 urlpatterns = [
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
