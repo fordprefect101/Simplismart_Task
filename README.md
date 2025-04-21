@@ -201,4 +201,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## UML Diagram
 
-![]{simplismart_task.png}
+![](./simplismart_task.png)
