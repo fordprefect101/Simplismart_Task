@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  consumer:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      - rabbitmq
+    networks:
+      - deployment-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"  # AMQP protocol port
+      - "15672:15672"  # Management UI port
+    networks:
+      - deployment-network
+
+networks:
+  deployment-network:
+    driver: bridge 
